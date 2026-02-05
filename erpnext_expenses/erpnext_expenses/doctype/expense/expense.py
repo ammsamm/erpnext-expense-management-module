@@ -5,10 +5,84 @@ import frappe
 from frappe.model.document import Document
 from frappe.model.workflow import apply_workflow
 import json
+import os
+
+# Attachment configuration
+MAX_ATTACHMENTS = 5
+MAX_FILE_SIZE_MB = 5
+MAX_TOTAL_SIZE_MB = 15
+ALLOWED_EXTENSIONS = {
+	'pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp',
+	'doc', 'docx', 'xls', 'xlsx'
+}
 
 
 class Expense(Document):
-	pass
+	def validate(self):
+		"""Validate expense document before saving."""
+		self.validate_attachments()
+
+	def validate_attachments(self):
+		"""Validate attachment count, file types, and sizes."""
+		if not self.attachments:
+			return
+
+		# Check attachment count
+		if len(self.attachments) > MAX_ATTACHMENTS:
+			frappe.throw(
+				f'Maximum {MAX_ATTACHMENTS} attachments allowed per expense. '
+				f'You have {len(self.attachments)}.',
+				title='Too Many Attachments'
+			)
+
+		total_size = 0
+
+		for idx, attachment in enumerate(self.attachments, 1):
+			if not attachment.attachment:
+				continue
+
+			# Get file info
+			file_url = attachment.attachment
+			file_doc = frappe.get_doc('File', {'file_url': file_url})
+
+			if not file_doc:
+				continue
+
+			# Validate file extension
+			file_name = file_doc.file_name or ''
+			extension = os.path.splitext(file_name)[1].lower().lstrip('.')
+
+			if extension not in ALLOWED_EXTENSIONS:
+				frappe.throw(
+					f'Attachment #{idx}: File type ".{extension}" is not allowed. '
+					f'Allowed types: {", ".join(sorted(ALLOWED_EXTENSIONS))}',
+					title='Invalid File Type'
+				)
+
+			# Validate individual file size
+			file_size_mb = (file_doc.file_size or 0) / (1024 * 1024)
+
+			if file_size_mb > MAX_FILE_SIZE_MB:
+				frappe.throw(
+					f'Attachment #{idx}: File size ({file_size_mb:.1f}MB) exceeds '
+					f'maximum allowed size of {MAX_FILE_SIZE_MB}MB.',
+					title='File Too Large'
+				)
+
+			total_size += file_doc.file_size or 0
+
+			# Auto-populate file name
+			if not attachment.file_name:
+				attachment.file_name = file_name
+
+		# Validate total size
+		total_size_mb = total_size / (1024 * 1024)
+		if total_size_mb > MAX_TOTAL_SIZE_MB:
+			frappe.throw(
+				f'Total attachment size ({total_size_mb:.1f}MB) exceeds '
+				f'maximum allowed total of {MAX_TOTAL_SIZE_MB}MB.',
+				title='Total Size Exceeded'
+			)
 
 
 @frappe.whitelist()

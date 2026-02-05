@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Invoice Attachments**: New "Expense Attachment" child doctype allowing multiple file attachments per expense
 - New collapsible "Invoice Attachments" section in Expense form with attachment table
+- **Attachment Validation**:
+  - Maximum 5 files per expense
+  - Allowed file types: PDF, images (jpg, png, gif, webp), documents (doc, docx, xls, xlsx)
+  - Maximum 5MB per file, 15MB total per expense
+  - Client-side validation with instant feedback
+  - Server-side validation for security
+  - Dynamic counter showing attachments used (e.g., "Invoice Attachments (3/5)")
 
 ### Security
 - **CRITICAL**: Fixed SQL injection vulnerability in `expense_report.py` - replaced f-string interpolation with parameterized query using `%s` placeholder ([CWE-89](https://cwe.mitre.org/data/definitions/89.html))

@@ -1,6 +1,14 @@
 // Copyright (c) 2024, Karani Geoffrey and contributors
 // For license information, please see license.txt
 
+// Attachment configuration (must match server-side values)
+const ATTACHMENT_CONFIG = {
+    maxFiles: 5,
+    maxFileSizeMB: 5,
+    maxTotalSizeMB: 15,
+    allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'doc', 'docx', 'xls', 'xlsx']
+};
+
 frappe.ui.form.on("Expense", {
 	refresh: function(frm) {
         // Check if the workflow state is "pending_finance_approval"
@@ -35,6 +43,9 @@ frappe.ui.form.on("Expense", {
                 });
             });
         }
+
+        // Show attachment limits info
+        updateAttachmentInfo(frm);
     },
 
     onload: function(frm) {
@@ -54,6 +65,7 @@ frappe.ui.form.on("Expense", {
     validate: function(frm) {
         const total_expense_amount = frm.doc.total;
         calculateTotalAmount(frm, total_expense_amount);
+        validateAttachments(frm);
     },
 
     table_jkwj_add: function(frm) {
@@ -71,6 +83,53 @@ frappe.ui.form.on("Expense", {
             frm.set_value('expense_date', '');
             frappe.throw(__('The expense date cannot be in the future.'));
         }
+    }
+});
+
+
+// Attachment child table events
+frappe.ui.form.on("Expense Attachment", {
+    attachments_add: function(frm, cdt, cdn) {
+        // Check if adding this row exceeds the limit
+        if (frm.doc.attachments && frm.doc.attachments.length > ATTACHMENT_CONFIG.maxFiles) {
+            frappe.model.clear_doc(cdt, cdn);
+            frm.refresh_field('attachments');
+            frappe.msgprint({
+                title: __('Attachment Limit Reached'),
+                indicator: 'orange',
+                message: __('Maximum {0} attachments allowed per expense.', [ATTACHMENT_CONFIG.maxFiles])
+            });
+        }
+        updateAttachmentInfo(frm);
+    },
+
+    attachments_remove: function(frm) {
+        updateAttachmentInfo(frm);
+    },
+
+    attachment: function(frm, cdt, cdn) {
+        // Validate file when attached
+        const row = locals[cdt][cdn];
+        if (!row.attachment) return;
+
+        const fileName = row.attachment.split('/').pop();
+        const extension = fileName.split('.').pop().toLowerCase();
+
+        // Validate extension
+        if (!ATTACHMENT_CONFIG.allowedExtensions.includes(extension)) {
+            frappe.model.set_value(cdt, cdn, 'attachment', '');
+            frappe.msgprint({
+                title: __('Invalid File Type'),
+                indicator: 'red',
+                message: __('File type ".{0}" is not allowed. Allowed types: {1}',
+                    [extension, ATTACHMENT_CONFIG.allowedExtensions.join(', ')])
+            });
+            return;
+        }
+
+        // Auto-populate file name
+        frappe.model.set_value(cdt, cdn, 'file_name', fileName);
+        updateAttachmentInfo(frm);
     }
 });
 
@@ -135,4 +194,65 @@ function calculateTotalAmount(frm, total_expense_amount) {
     }
 
     return true;
+}
+
+
+// Validate attachments before save
+function validateAttachments(frm) {
+    if (!frm.doc.attachments || frm.doc.attachments.length === 0) {
+        return true;
+    }
+
+    // Check count
+    if (frm.doc.attachments.length > ATTACHMENT_CONFIG.maxFiles) {
+        frappe.throw(__('Maximum {0} attachments allowed. You have {1}.',
+            [ATTACHMENT_CONFIG.maxFiles, frm.doc.attachments.length]));
+    }
+
+    // Validate each attachment
+    frm.doc.attachments.forEach(function(row, idx) {
+        if (!row.attachment) return;
+
+        const fileName = row.attachment.split('/').pop();
+        const extension = fileName.split('.').pop().toLowerCase();
+
+        if (!ATTACHMENT_CONFIG.allowedExtensions.includes(extension)) {
+            frappe.throw(__('Attachment #{0}: File type ".{1}" is not allowed.',
+                [idx + 1, extension]));
+        }
+    });
+
+    return true;
+}
+
+
+// Update attachment info display
+function updateAttachmentInfo(frm) {
+    const count = (frm.doc.attachments || []).filter(a => a.attachment).length;
+    const remaining = ATTACHMENT_CONFIG.maxFiles - count;
+
+    // Update section label with count
+    const section = frm.get_field('attachments_section');
+    if (section) {
+        const label = count > 0
+            ? __('Invoice Attachments ({0}/{1})', [count, ATTACHMENT_CONFIG.maxFiles])
+            : __('Invoice Attachments');
+        section.df.label = label;
+        section.refresh();
+    }
+
+    // Show warning if near limit
+    if (remaining === 1) {
+        frm.dashboard.set_headline_alert(
+            __('You can add 1 more attachment.'),
+            'orange'
+        );
+    } else if (remaining === 0) {
+        frm.dashboard.set_headline_alert(
+            __('Maximum attachments reached ({0} files).', [ATTACHMENT_CONFIG.maxFiles]),
+            'red'
+        );
+    } else {
+        frm.dashboard.clear_headline();
+    }
 }
