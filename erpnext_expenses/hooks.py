@@ -4,7 +4,7 @@ app_publisher = "Karani Geoffrey"
 app_description = "A module to capture Expenses in ERPNext"
 app_email = "karani@upeosoft.com"
 app_license = "mit"
-# required_apps = []
+required_apps = ["frappe", "erpnext"]
 
 # Includes in <head>
 # ------------------
