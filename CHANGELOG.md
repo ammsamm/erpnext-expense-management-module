@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Invoice Attachments**: New "Expense Attachment" child doctype allowing multiple file attachments per expense
+- New collapsible "Invoice Attachments" section in Expense form with attachment table
+
 ### Security
 - **CRITICAL**: Fixed SQL injection vulnerability in `expense_report.py` - replaced f-string interpolation with parameterized query using `%s` placeholder ([CWE-89](https://cwe.mitre.org/data/definitions/89.html))
 - Added input validation on all whitelisted API endpoints
