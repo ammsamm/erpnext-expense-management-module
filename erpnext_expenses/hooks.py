@@ -229,7 +229,6 @@ required_apps = ["frappe", "erpnext"]
 
 
 fixtures = [
-    {"dt": "Role", "filters": [["name", "in", ["Expense Manager"]]]},
     "Client Script",
     "Custom Field",
 	"Print Format",
