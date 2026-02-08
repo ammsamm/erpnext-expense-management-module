@@ -57,6 +57,29 @@ def create_journal_entries(report):
 
         expense_report = expense_report[0]
 
+        # FIX #3: Server-side paying_account validation
+        if not expense_report.paying_account:
+            frappe.throw(
+                'Please set the Paying Account before creating journal entries.',
+                title='Missing Paying Account'
+            )
+
+        # FIX #1: Check for existing journal entries to prevent duplicates
+        existing_jv = frappe.db.sql("""
+            SELECT je.name FROM `tabJournal Entry` je
+            JOIN `tabJournal Entry Account` jea ON jea.parent = je.name
+            WHERE jea.reference_type = 'Expense Report'
+            AND jea.reference_name = %s
+            AND je.docstatus = 1
+            LIMIT 1
+        """, (report,))
+
+        if existing_jv:
+            frappe.throw(
+                f'Journal Entry {existing_jv[0][0]} already exists for this Expense Report.',
+                title='Duplicate Journal Entry'
+            )
+
         # Get all the expense IDs for the expenses in the report
         report_expenses = frappe.db.get_all(
             'Expense Detail',
@@ -90,29 +113,38 @@ def create_journal_entries(report):
                         'tax_account'
                     )
 
-                    if tax_account:
-                        # Add tax amount to the corresponding tax type in the dictionary
-                        if tax_account not in tax_amounts:
-                            tax_amounts[tax_account] = 0
-                        tax_amounts[tax_account] += tax_exists.vat_amount
+                    if not tax_account:
+                        frappe.throw(
+                            f'Tax "{tax_exists.vat}" does not have a Tax Account configured. '
+                            'Please set a Tax Account in the Expense Taxes master.',
+                            title='Missing Tax Account'
+                        )
 
-                        # Track tax per expense for correct deduction
-                        expense_tax_totals[expense_id] += tax_exists.vat_amount
+                    if tax_account not in tax_amounts:
+                        tax_amounts[tax_account] = 0
+                    tax_amounts[tax_account] += tax_exists.vat_amount
+
+                    # Track tax per expense for correct deduction
+                    expense_tax_totals[expense_id] += tax_exists.vat_amount
 
         # Get the associated expense value from the expenses child table
         expense_details = frappe.db.get_all(
             'Expense Detail',
             filters={'parent': report},
-            fields=['expense_id', 'subtotal', 'description']
+            fields=['expense_id', 'subtotal', 'description', 'expense_date']
         )
 
         expense_total = sum(item.subtotal for item in expense_details)
+
+        # FIX #6: Use the latest expense date as posting date
+        expense_dates = [item.expense_date for item in expense_details if item.expense_date]
+        posting_date = max(expense_dates) if expense_dates else nowdate()
 
         # Create the journal entries
         jv = frappe.new_doc('Journal Entry')
         jv.voucher_type = 'Journal Entry'
         jv.naming_series = 'ACC-JV-.YYYY.-'
-        jv.posting_date = nowdate()
+        jv.posting_date = posting_date
         jv.company = expense_report.company
         jv.remark = f'Expense Report: {expense_report.name}'
 
@@ -123,6 +155,8 @@ def create_journal_entries(report):
             'debit': float(0),
             'debit_in_account_currency': float(0),
             'credit_in_account_currency': float(expense_total),
+            'reference_type': 'Expense Report',
+            'reference_name': report,
         })
 
         # Entry to the Debit Side for each expense category

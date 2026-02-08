@@ -164,6 +164,7 @@ def create_expense_report(expense, details=None):
 
 		if details:
 			for detail in details:
+				_check_expense_not_in_active_report(detail.get('expense_id'))
 				report_detail = frappe.get_doc({
 					'doctype': 'Expense Detail',
 					'parent': report.name,
@@ -179,6 +180,7 @@ def create_expense_report(expense, details=None):
 
 				_submit_expense(detail.get('expense_id'))
 		else:
+			_check_expense_not_in_active_report(expense)
 			report_detail = frappe.get_doc({
 				'doctype': 'Expense Detail',
 				'parent': report.name,
@@ -213,6 +215,22 @@ def create_expense_report(expense, details=None):
 				frappe.log_error(f"Failed to cleanup expense report {report.name}: {str(cleanup_error)}")
 
 		return {'response': 'Error', 'message': str(e)}
+
+
+def _check_expense_not_in_active_report(expense_id):
+	"""Ensure expense is not already linked to an active (non-cancelled) report."""
+	existing = frappe.db.sql("""
+		SELECT ed.parent FROM `tabExpense Detail` ed
+		JOIN `tabExpense Report` er ON er.name = ed.parent
+		WHERE ed.expense_id = %s AND er.docstatus != 2
+		LIMIT 1
+	""", (expense_id,), as_dict=True)
+
+	if existing:
+		frappe.throw(
+			f'Expense {expense_id} is already linked to Expense Report {existing[0].parent}.',
+			title='Expense Already in Report'
+		)
 
 
 def _submit_expense(expense_name):
