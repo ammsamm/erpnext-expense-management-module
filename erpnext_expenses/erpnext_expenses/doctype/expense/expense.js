@@ -14,7 +14,7 @@ frappe.ui.form.on("Expense", {
         // paying_account is managed on Expense Report, hide on individual Expense form
         frm.toggle_display('paying_account', false);
 
-        if (frm.doc.workflow_state === 'Draft') {
+        if (frm.doc.docstatus === 0 && !frm.is_new()) {
             frm.add_custom_button(__('Create Report'), function() {
                 frappe.call({
                     method: 'erpnext_expenses.erpnext_expenses.doctype.expense.expense.create_expense_report',

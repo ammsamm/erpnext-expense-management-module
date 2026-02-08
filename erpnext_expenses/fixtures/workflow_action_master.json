@@ -2,13 +2,6 @@
  {
   "docstatus": 0,
   "doctype": "Workflow Action Master",
-  "modified": "2024-03-29 19:15:34.416035",
-  "name": "Submit",
-  "workflow_action_name": "Submit"
- },
- {
-  "docstatus": 0,
-  "doctype": "Workflow Action Master",
   "modified": "2024-03-29 21:07:05.259743",
   "name": "Create Journal Entries",
   "workflow_action_name": "Create Journal Entries"

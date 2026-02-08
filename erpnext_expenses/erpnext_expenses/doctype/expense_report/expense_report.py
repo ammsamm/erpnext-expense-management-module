@@ -20,15 +20,12 @@ class ExpenseReport(Document):
 
         for detail in expense_details:
             expense_id = detail.expense_id
-            current_state = frappe.db.get_value('Expense', expense_id, 'workflow_state')
+            current_docstatus = frappe.db.get_value('Expense', expense_id, 'docstatus')
 
-            if current_state == 'Submitted':
-                # Direct update to revert docstatus and workflow_state
+            if current_docstatus == 1:
+                # Direct update to revert docstatus
                 # Required because Frappe doesn't support docstatus 1→0 via normal save
-                frappe.db.set_value('Expense', expense_id, {
-                    'workflow_state': 'Draft',
-                    'docstatus': 0
-                })
+                frappe.db.set_value('Expense', expense_id, 'docstatus', 0)
 
 
 @frappe.whitelist()
