@@ -40,8 +40,9 @@ frappe.ui.form.on("Expense", {
             });
         }
 
-        // Show attachment limits info
+        // Show attachment limits info and view button
         updateAttachmentInfo(frm);
+        setupAttachmentViewing(frm);
     },
 
     onload: function(frm) {
@@ -101,6 +102,30 @@ frappe.ui.form.on("Expense Attachment", {
 
     attachments_remove: function(frm) {
         updateAttachmentInfo(frm);
+    },
+
+    form_render: function(frm, cdt, cdn) {
+        // Add view button when child table row is expanded
+        const row = locals[cdt][cdn];
+        if (!row.attachment) return;
+
+        const grid_row = frm.fields_dict.attachments.grid.grid_rows_by_docname[cdn];
+        if (!grid_row || !grid_row.grid_form) return;
+
+        const $form = $(grid_row.grid_form.wrapper);
+        $form.find('.btn-view-attachment').remove();
+
+        const $btn = $(`<button class="btn btn-xs btn-primary btn-view-attachment"
+            style="margin-top: 8px; margin-bottom: 8px;">
+            <i class="fa fa-eye"></i> ${__('View Attachment')}
+        </button>`);
+
+        $btn.on('click', function(e) {
+            e.stopPropagation();
+            openAttachment(row.attachment, row.file_name);
+        });
+
+        $form.find('.frappe-control[data-fieldname="attachment"]').append($btn);
     },
 
     attachment: function(frm, cdt, cdn) {
@@ -219,6 +244,101 @@ function validateAttachments(frm) {
     });
 
     return true;
+}
+
+
+// Setup attachment viewing: add "View Attachments" button on form
+function setupAttachmentViewing(frm) {
+    const attachments = (frm.doc.attachments || []).filter(function(a) { return a.attachment; });
+    if (!attachments.length || frm.is_new()) return;
+
+    frm.add_custom_button(__('View Attachments'), function() {
+        showAttachmentsGallery(frm);
+    });
+}
+
+
+// Open a single attachment: image preview dialog or new tab for other files
+function openAttachment(url, fileName) {
+    const name = fileName || url.split('/').pop();
+    const ext = name.split('.').pop().toLowerCase();
+    const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+    if (imageTypes.includes(ext)) {
+        const d = new frappe.ui.Dialog({
+            title: name,
+            fields: [{
+                fieldtype: 'HTML',
+                fieldname: 'preview',
+                options: '<div style="text-align: center;">'
+                    + '<img src="' + url + '" style="max-width: 100%; max-height: 70vh;">'
+                    + '</div>'
+            }],
+            primary_action_label: __('Open in New Tab'),
+            primary_action: function() {
+                window.open(url, '_blank');
+            }
+        });
+        d.show();
+        d.$wrapper.find('.modal-dialog').css('max-width', '800px');
+    } else {
+        window.open(url, '_blank');
+    }
+}
+
+
+// Show gallery dialog with all attachments
+function showAttachmentsGallery(frm) {
+    const attachments = (frm.doc.attachments || []).filter(function(a) { return a.attachment; });
+    if (!attachments.length) {
+        frappe.msgprint(__('No attachments found.'));
+        return;
+    }
+
+    const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    let html = '';
+
+    attachments.forEach(function(att, idx) {
+        const url = att.attachment;
+        const fileName = att.file_name || url.split('/').pop();
+        const ext = fileName.split('.').pop().toLowerCase();
+        const isImage = imageTypes.includes(ext);
+        const iconClass = isImage ? 'fa-image' : (ext === 'pdf' ? 'fa-file-pdf-o' : 'fa-file-o');
+
+        html += '<div style="margin-bottom: 12px; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px;">';
+
+        if (isImage) {
+            html += '<div style="text-align: center; margin-bottom: 8px;">'
+                + '<a href="' + url + '" target="_blank">'
+                + '<img src="' + url + '" style="max-width: 100%; max-height: 200px; border-radius: 4px; cursor: pointer;">'
+                + '</a></div>';
+        }
+
+        html += '<div style="display: flex; align-items: center; gap: 8px;">'
+            + '<i class="fa ' + iconClass + '"></i> '
+            + '<a href="' + url + '" target="_blank" style="font-weight: 500;">'
+            + frappe.utils.escape_html(fileName)
+            + '</a></div>';
+
+        if (att.description) {
+            html += '<div style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">'
+                + frappe.utils.escape_html(att.description)
+                + '</div>';
+        }
+
+        html += '</div>';
+    });
+
+    const d = new frappe.ui.Dialog({
+        title: __('Attachments ({0})', [attachments.length]),
+        fields: [{
+            fieldtype: 'HTML',
+            fieldname: 'gallery',
+            options: html
+        }],
+        size: 'large'
+    });
+    d.show();
 }
 
 
