@@ -21,9 +21,9 @@ def create_journal_entries(report):
 
     try:
         fields = [
+            'name',
             'company',
-            'paying_account',
-            'description'
+            'paying_account'
         ]
 
         expense_report = frappe.db.get_all(
@@ -94,7 +94,7 @@ def create_journal_entries(report):
         jv.naming_series = 'ACC-JV-.YYYY.-'
         jv.posting_date = nowdate()
         jv.company = expense_report.company
-        jv.remark = expense_report.description or ''
+        jv.remark = f'Expense Report: {expense_report.name}'
 
         # Entry to the Credit Side
         jv.append('accounts', {
@@ -156,7 +156,7 @@ def create_journal_entries(report):
         jv.submit()
 
         # Change the workflow state of the Expense Report
-        _update_report_workflow_state(report, 'Journals Created')
+        _update_report_workflow_state(report, 'Create Journal Entries', 'Journals Created')
 
         frappe.db.commit()
 
@@ -168,15 +168,21 @@ def create_journal_entries(report):
         frappe.throw(f"Error creating journal entries: {str(e)}")
 
 
-def _update_report_workflow_state(report_name, state):
-    """Update expense report workflow state using proper workflow API."""
+def _update_report_workflow_state(report_name, action, target_state):
+    """Update expense report workflow state using proper workflow API.
+
+    Args:
+        report_name: Name of the Expense Report document
+        action: Workflow action name (e.g. 'Create Journal Entries')
+        target_state: Target workflow state name (e.g. 'Journals Created') used as fallback
+    """
     try:
         doc = frappe.get_doc('Expense Report', report_name)
         try:
-            apply_workflow(doc, state)
+            apply_workflow(doc, action)
         except Exception:
-            # Fallback to direct assignment if workflow action doesn't exist
-            doc.workflow_state = state
+            # Fallback to direct assignment if workflow transition doesn't exist
+            doc.workflow_state = target_state
             doc.save()
     except Exception as e:
         frappe.log_error(f"Error updating expense report workflow state: {str(e)}")

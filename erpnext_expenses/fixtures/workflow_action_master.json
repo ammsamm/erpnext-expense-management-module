@@ -54,5 +54,12 @@
   "modified": "2024-03-29 17:24:23.560509",
   "name": "Recall",
   "workflow_action_name": "Recall"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow Action Master",
+  "modified": "2026-02-08 12:00:00.000000",
+  "name": "Revise",
+  "workflow_action_name": "Revise"
  }
 ]

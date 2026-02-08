@@ -169,7 +169,7 @@ def create_expense_report(expense, details=None):
 				report_detail.insert()
 
 				# Change the workflow state of the Expense using proper workflow API
-				_update_expense_workflow_state(detail.get('expense_id'), 'Submitted')
+				_update_expense_workflow_state(detail.get('expense_id'), 'Submit', 'Submitted')
 		else:
 			report_detail = frappe.get_doc({
 				'doctype': 'Expense Detail',
@@ -185,7 +185,7 @@ def create_expense_report(expense, details=None):
 			report_detail.insert()
 
 			# Change the workflow state of the Expense using proper workflow API
-			_update_expense_workflow_state(expense, 'Submitted')
+			_update_expense_workflow_state(expense, 'Submit', 'Submitted')
 
 		frappe.db.commit()
 
@@ -208,16 +208,21 @@ def create_expense_report(expense, details=None):
 		return {'response': 'Error', 'message': str(e)}
 
 
-def _update_expense_workflow_state(expense_name, state):
-	"""Update expense workflow state using proper workflow API."""
+def _update_expense_workflow_state(expense_name, action, target_state):
+	"""Update expense workflow state using proper workflow API.
+
+	Args:
+		expense_name: Name of the Expense document
+		action: Workflow action name (e.g. 'Submit')
+		target_state: Target workflow state name (e.g. 'Submitted') used as fallback
+	"""
 	try:
 		doc = frappe.get_doc('Expense', expense_name)
-		# Try to use workflow API if available
 		try:
-			apply_workflow(doc, state)
+			apply_workflow(doc, action)
 		except Exception:
 			# Fallback to direct assignment if workflow action doesn't exist
-			doc.workflow_state = state
+			doc.workflow_state = target_state
 			doc.save()
 	except Exception as e:
 		frappe.log_error(f"Error updating expense workflow state: {str(e)}")

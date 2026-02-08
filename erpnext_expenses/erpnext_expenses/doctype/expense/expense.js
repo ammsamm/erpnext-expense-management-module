@@ -11,12 +11,8 @@ const ATTACHMENT_CONFIG = {
 
 frappe.ui.form.on("Expense", {
 	refresh: function(frm) {
-        // Check if the workflow state is "pending_finance_approval"
-        if (frm.doc.workflow_state === 'pending_finance_approval') {
-            frm.toggle_display('paying_account', true);
-        } else {
-            frm.toggle_display('paying_account', false);
-        }
+        // paying_account is managed on Expense Report, hide on individual Expense form
+        frm.toggle_display('paying_account', false);
 
         if (frm.doc.workflow_state === 'Draft') {
             frm.add_custom_button(__('Create Report'), function() {
