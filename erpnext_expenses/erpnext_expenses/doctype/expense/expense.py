@@ -17,6 +17,16 @@ ALLOWED_EXTENSIONS = {
 
 
 class Expense(Document):
+	def before_submit(self):
+		"""Ensure expense is linked to an Expense Report before submission."""
+		linked = frappe.db.exists('Expense Detail', {'expense_id': self.name})
+		if not linked:
+			frappe.throw(
+				'Expenses must be submitted via an Expense Report. '
+				'Use the "Create Report" button to submit this expense.',
+				title='Direct Submission Not Allowed'
+			)
+
 	def validate(self):
 		"""Validate expense document before saving."""
 		self.validate_attachments()
