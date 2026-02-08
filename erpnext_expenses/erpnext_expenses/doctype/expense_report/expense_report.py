@@ -5,7 +5,30 @@ from frappe.utils import nowdate
 
 
 class ExpenseReport(Document):
-    pass
+    def on_update(self):
+        """When report moves back to Draft, revert associated expenses to Draft."""
+        if self.workflow_state == 'Draft':
+            self.revert_expenses_to_draft()
+
+    def revert_expenses_to_draft(self):
+        """Revert associated expenses from Submitted back to Draft."""
+        expense_details = frappe.db.get_all(
+            'Expense Detail',
+            filters={'parent': self.name},
+            fields=['expense_id']
+        )
+
+        for detail in expense_details:
+            expense_id = detail.expense_id
+            current_state = frappe.db.get_value('Expense', expense_id, 'workflow_state')
+
+            if current_state == 'Submitted':
+                # Direct update to revert docstatus and workflow_state
+                # Required because Frappe doesn't support docstatus 1→0 via normal save
+                frappe.db.set_value('Expense', expense_id, {
+                    'workflow_state': 'Draft',
+                    'docstatus': 0
+                })
 
 
 @frappe.whitelist()
