@@ -28,7 +28,7 @@ class ExpenseReport(Document):
 
 
 @frappe.whitelist()
-def create_journal_entries(report):
+def create_journal_entries(report, paying_account=None):
     """Create journal entries for an expense report."""
     # Input validation
     if not report or not isinstance(report, str):
@@ -56,7 +56,12 @@ def create_journal_entries(report):
 
         expense_report = expense_report[0]
 
-        # FIX #3: Server-side paying_account validation
+        # Use paying_account passed from client, fall back to DB value
+        if paying_account:
+            expense_report.paying_account = paying_account
+            # Persist to DB for future reference
+            frappe.db.set_value('Expense Report', report, 'paying_account', paying_account)
+
         if not expense_report.paying_account:
             frappe.throw(
                 'Please set the Paying Account before creating journal entries.',
