@@ -6,8 +6,7 @@ frappe.ui.form.on("Expense Report", {
         // Show "Create Journal Entries" button only when approved and user has permission
         if (frm.doc.workflow_state === 'Approved' && frappe.user.has_role('Accounts User')) {
             frm.add_custom_button(__('Create Journal Entries'), function() {
-                // Save first to persist paying_account to DB, then let server validate
-                frm.save().then(() => {
+                function call_create_journal() {
                     frappe.call({
                         method: 'erpnext_expenses.erpnext_expenses.doctype.expense_report.expense_report.create_journal_entries',
                         args: {
@@ -33,7 +32,14 @@ frappe.ui.form.on("Expense Report", {
                             });
                         }
                     });
-                });
+                }
+
+                // Save first if form has unsaved changes, then create journal
+                if (frm.dirty()) {
+                    frm.save().then(() => call_create_journal());
+                } else {
+                    call_create_journal();
+                }
             });
         }
 	}
