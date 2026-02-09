@@ -1,6 +1,5 @@
 import frappe
 from frappe.model.document import Document
-from frappe.model.workflow import apply_workflow
 from frappe.utils import nowdate
 
 
@@ -210,7 +209,7 @@ def create_journal_entries(report):
         jv.submit()
 
         # Change the workflow state of the Expense Report
-        _update_report_workflow_state(report, 'Create Journal Entries', 'Journals Created')
+        _update_report_workflow_state(report, 'Journals Created')
 
         frappe.db.commit()
 
@@ -222,22 +221,15 @@ def create_journal_entries(report):
         frappe.throw(f"Error creating journal entries: {str(e)}")
 
 
-def _update_report_workflow_state(report_name, action, target_state):
-    """Update expense report workflow state using proper workflow API.
+def _update_report_workflow_state(report_name, target_state):
+    """Update expense report workflow state via direct DB update.
 
     Args:
         report_name: Name of the Expense Report document
-        action: Workflow action name (e.g. 'Create Journal Entries')
-        target_state: Target workflow state name (e.g. 'Journals Created') used as fallback
+        target_state: Target workflow state name (e.g. 'Journals Created')
     """
     try:
-        doc = frappe.get_doc('Expense Report', report_name)
-        try:
-            apply_workflow(doc, action)
-        except Exception:
-            # Fallback to direct assignment if workflow transition doesn't exist
-            doc.workflow_state = target_state
-            doc.save()
+        frappe.db.set_value('Expense Report', report_name, 'workflow_state', target_state)
     except Exception as e:
         frappe.log_error(f"Error updating expense report workflow state: {str(e)}")
         raise
