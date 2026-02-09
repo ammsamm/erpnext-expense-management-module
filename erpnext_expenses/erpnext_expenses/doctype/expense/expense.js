@@ -53,7 +53,25 @@ frappe.ui.form.on("Expense", {
                     if (response.message) {
                         frm.set_value('employee', response.message.employee);
                         frm.set_value('employee_name', response.message.employee_name);
+                        frm.set_value('company', response.message.company);
                     }
+                }
+            });
+        }
+
+        // Lock employee and company fields for non-managers
+        let is_manager = frappe.user.has_role('Accounts Manager') || frappe.user.has_role('System Manager');
+        frm.set_df_property('employee', 'read_only', is_manager ? 0 : 1);
+        frm.set_df_property('company', 'read_only', is_manager ? 0 : 1);
+    },
+
+    employee: function(frm) {
+        // When manager changes employee, update company from that employee's record
+        if (frm.doc.employee) {
+            frappe.db.get_value('Employee', frm.doc.employee, ['employee_name', 'company'], function(r) {
+                if (r) {
+                    frm.set_value('employee_name', r.employee_name);
+                    frm.set_value('company', r.company);
                 }
             });
         }

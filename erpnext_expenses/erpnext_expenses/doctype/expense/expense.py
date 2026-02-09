@@ -29,7 +29,26 @@ class Expense(Document):
 
 	def validate(self):
 		"""Validate expense document before saving."""
+		self.validate_employee()
 		self.validate_attachments()
+
+	def validate_employee(self):
+		"""Ensure non-managers can only create expenses for themselves."""
+		is_manager = frappe.db.exists('Has Role', {
+			'parent': frappe.session.user,
+			'role': ('in', ['Accounts Manager', 'System Manager'])
+		})
+
+		if is_manager:
+			return
+
+		if self.employee:
+			employee_user = frappe.db.get_value('Employee', self.employee, 'user_id')
+			if employee_user != frappe.session.user:
+				frappe.throw(
+					'You can only create expenses for your own employee record.',
+					title='Permission Denied'
+				)
 
 	def validate_attachments(self):
 		"""Validate attachment count, file types, and sizes."""
@@ -100,11 +119,10 @@ def get_logged_in_employee():
 	try:
 		user = frappe.session.user
 
-		# Use get_value with as_dict for safer handling
 		employee_data = frappe.db.get_value(
 			'Employee',
 			{'user_id': user},
-			['name', 'employee_name'],
+			['name', 'employee_name', 'company'],
 			as_dict=True
 		)
 
@@ -113,7 +131,8 @@ def get_logged_in_employee():
 
 		return {
 			'employee': employee_data.name,
-			'employee_name': employee_data.employee_name
+			'employee_name': employee_data.employee_name,
+			'company': employee_data.company
 		}
 
 	except Exception as e:
