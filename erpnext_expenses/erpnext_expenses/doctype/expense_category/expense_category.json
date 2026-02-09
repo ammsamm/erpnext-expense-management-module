@@ -32,7 +32,8 @@
    "in_standard_filter": 1,
    "label": "Expense Account",
    "options": "Account",
-   "reqd": 1
+   "reqd": 1,
+   "link_filters": "[[\"Account\",\"is_group\",\"=\",0],[\"Account\",\"root_type\",\"=\",\"Expense\"]]"
   }
  ],
  "index_web_pages_for_search": 1,
