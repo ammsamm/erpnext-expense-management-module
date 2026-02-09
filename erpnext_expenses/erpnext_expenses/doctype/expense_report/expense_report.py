@@ -63,15 +63,13 @@ def create_journal_entries(report):
                 title='Missing Paying Account'
             )
 
-        # FIX #1: Check for existing journal entries to prevent duplicates
+        # Check for existing journal entries to prevent duplicates
         existing_jv = frappe.db.sql("""
-            SELECT je.name FROM `tabJournal Entry` je
-            JOIN `tabJournal Entry Account` jea ON jea.parent = je.name
-            WHERE jea.reference_type = 'Expense Report'
-            AND jea.reference_name = %s
-            AND je.docstatus = 1
+            SELECT name FROM `tabJournal Entry`
+            WHERE remark = %s
+            AND docstatus = 1
             LIMIT 1
-        """, (report,))
+        """, (f'Expense Report: {report}',))
 
         if existing_jv:
             frappe.throw(
@@ -154,8 +152,6 @@ def create_journal_entries(report):
             'debit': float(0),
             'debit_in_account_currency': float(0),
             'credit_in_account_currency': float(expense_total),
-            'reference_type': 'Expense Report',
-            'reference_name': report,
         })
 
         # Entry to the Debit Side for each expense category
