@@ -218,7 +218,16 @@ def create_expense_report(expense, details=None):
 
 
 def _check_expense_not_in_active_report(expense_id):
-	"""Ensure expense is not already linked to an active (non-cancelled) report."""
+	"""Ensure expense is in Draft and not already linked to an active report."""
+	# Check if expense is already submitted (e.g. journals already created)
+	docstatus = frappe.db.get_value('Expense', expense_id, 'docstatus')
+	if docstatus and docstatus != 0:
+		frappe.throw(
+			f'Expense {expense_id} has already been submitted and cannot be added to a new report.',
+			title='Expense Already Submitted'
+		)
+
+	# Check if expense is already linked to an active (non-cancelled) report
 	existing = frappe.db.sql("""
 		SELECT ed.parent FROM `tabExpense Detail` ed
 		JOIN `tabExpense Report` er ON er.name = ed.parent
