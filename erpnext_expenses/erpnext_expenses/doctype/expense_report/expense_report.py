@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import nowdate
 
@@ -32,11 +33,11 @@ def create_journal_entries(report, paying_account=None):
     """Create journal entries for an expense report."""
     # Input validation
     if not report or not isinstance(report, str):
-        frappe.throw('Invalid report parameter')
+        frappe.throw(_('Invalid report parameter'))
 
     # Verify user has write permission on the expense report
     if not frappe.has_permission('Expense Report', 'write', report):
-        frappe.throw('You do not have permission to modify this expense report', frappe.PermissionError)
+        frappe.throw(_('You do not have permission to modify this expense report'), frappe.PermissionError)
 
     try:
         fields = [
@@ -52,7 +53,7 @@ def create_journal_entries(report, paying_account=None):
         )
 
         if not expense_report:
-            frappe.throw(f"Expense Report {report} not found")
+            frappe.throw(_("Expense Report {0} not found").format(report))
 
         expense_report = expense_report[0]
 
@@ -64,8 +65,8 @@ def create_journal_entries(report, paying_account=None):
 
         if not expense_report.paying_account:
             frappe.throw(
-                'Please set the Paying Account before creating journal entries.',
-                title='Missing Paying Account'
+                _('Please set the Paying Account before creating journal entries.'),
+                title=_('Missing Paying Account')
             )
 
         # Check for existing journal entries to prevent duplicates
@@ -78,8 +79,8 @@ def create_journal_entries(report, paying_account=None):
 
         if existing_jv:
             frappe.throw(
-                f'Journal Entry {existing_jv[0][0]} already exists for this Expense Report.',
-                title='Duplicate Journal Entry'
+                _('Journal Entry {0} already exists for this Expense Report.').format(existing_jv[0][0]),
+                title=_('Duplicate Journal Entry')
             )
 
         # Get all the expense IDs for the expenses in the report
@@ -117,9 +118,9 @@ def create_journal_entries(report, paying_account=None):
 
                     if not tax_account:
                         frappe.throw(
-                            f'Tax "{tax_exists.vat}" does not have a Tax Account configured. '
-                            'Please set a Tax Account in the Expense Taxes master.',
-                            title='Missing Tax Account'
+                            _('Tax "{0}" does not have a Tax Account configured. '
+                            'Please set a Tax Account in the Expense Taxes master.').format(tax_exists.vat),
+                            title=_('Missing Tax Account')
                         )
 
                     if tax_account not in tax_amounts:
@@ -219,7 +220,7 @@ def create_journal_entries(report, paying_account=None):
     except Exception as e:
         frappe.db.rollback()
         frappe.log_error(f"Error creating journal entries: {str(e)}")
-        frappe.throw(f"Error creating journal entries: {str(e)}")
+        frappe.throw(_("Error creating journal entries: {0}").format(str(e)))
 
 
 def _update_report_workflow_state(report_name, target_state):

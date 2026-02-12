@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 import json
 import os
@@ -22,9 +23,9 @@ class Expense(Document):
 		linked = frappe.db.exists('Expense Detail', {'expense_id': self.name})
 		if not linked:
 			frappe.throw(
-				'Expenses must be submitted via an Expense Report. '
-				'Use the "Create Report" button to submit this expense.',
-				title='Direct Submission Not Allowed'
+				_('Expenses must be submitted via an Expense Report. '
+				'Use the "Create Report" button to submit this expense.'),
+				title=_('Direct Submission Not Allowed')
 			)
 
 	def validate(self):
@@ -46,8 +47,8 @@ class Expense(Document):
 			employee_user = frappe.db.get_value('Employee', self.employee, 'user_id')
 			if employee_user != frappe.session.user:
 				frappe.throw(
-					'You can only create expenses for your own employee record.',
-					title='Permission Denied'
+					_('You can only create expenses for your own employee record.'),
+					title=_('Permission Denied')
 				)
 
 	def validate_attachments(self):
@@ -58,9 +59,9 @@ class Expense(Document):
 		# Check attachment count
 		if len(self.attachments) > MAX_ATTACHMENTS:
 			frappe.throw(
-				f'Maximum {MAX_ATTACHMENTS} attachments allowed per expense. '
-				f'You have {len(self.attachments)}.',
-				title='Too Many Attachments'
+				_('Maximum {0} attachments allowed per expense. '
+				'You have {1}.').format(MAX_ATTACHMENTS, len(self.attachments)),
+				title=_('Too Many Attachments')
 			)
 
 		total_size = 0
@@ -82,9 +83,9 @@ class Expense(Document):
 
 			if extension not in ALLOWED_EXTENSIONS:
 				frappe.throw(
-					f'Attachment #{idx}: File type ".{extension}" is not allowed. '
-					f'Allowed types: {", ".join(sorted(ALLOWED_EXTENSIONS))}',
-					title='Invalid File Type'
+					_('Attachment #{0}: File type ".{1}" is not allowed. '
+					'Allowed types: {2}').format(idx, extension, ", ".join(sorted(ALLOWED_EXTENSIONS))),
+					title=_('Invalid File Type')
 				)
 
 			# Validate individual file size
@@ -92,9 +93,9 @@ class Expense(Document):
 
 			if file_size_mb > MAX_FILE_SIZE_MB:
 				frappe.throw(
-					f'Attachment #{idx}: File size ({file_size_mb:.1f}MB) exceeds '
-					f'maximum allowed size of {MAX_FILE_SIZE_MB}MB.',
-					title='File Too Large'
+					_('Attachment #{0}: File size ({1}MB) exceeds '
+					'maximum allowed size of {2}MB.').format(idx, f'{file_size_mb:.1f}', MAX_FILE_SIZE_MB),
+					title=_('File Too Large')
 				)
 
 			total_size += file_doc.file_size or 0
@@ -107,9 +108,9 @@ class Expense(Document):
 		total_size_mb = total_size / (1024 * 1024)
 		if total_size_mb > MAX_TOTAL_SIZE_MB:
 			frappe.throw(
-				f'Total attachment size ({total_size_mb:.1f}MB) exceeds '
-				f'maximum allowed total of {MAX_TOTAL_SIZE_MB}MB.',
-				title='Total Size Exceeded'
+				_('Total attachment size ({0}MB) exceeds '
+				'maximum allowed total of {1}MB.').format(f'{total_size_mb:.1f}', MAX_TOTAL_SIZE_MB),
+				title=_('Total Size Exceeded')
 			)
 
 
@@ -145,11 +146,11 @@ def create_expense_report(expense, details=None):
 	"""Create an expense report from one or more expenses."""
 	# Input validation
 	if not expense or not isinstance(expense, str):
-		return {'response': 'Error', 'message': 'Invalid expense parameter'}
+		return {'response': 'Error', 'message': _('Invalid expense parameter')}
 
 	# Verify user has read permission on the expense
 	if not frappe.has_permission('Expense', 'read', expense):
-		frappe.throw('You do not have permission to access this expense', frappe.PermissionError)
+		frappe.throw(_('You do not have permission to access this expense'), frappe.PermissionError)
 
 	report = None
 
@@ -168,7 +169,7 @@ def create_expense_report(expense, details=None):
 		expense_data = frappe.db.get_all('Expense', filters={'name': expense}, fields=fields)
 
 		if not expense_data:
-			return {'response': 'Error', 'message': 'Expense not found'}
+			return {'response': 'Error', 'message': _('Expense not found')}
 
 		expense_data = expense_data[0]
 
@@ -242,8 +243,8 @@ def _check_expense_not_in_active_report(expense_id):
 	docstatus = frappe.db.get_value('Expense', expense_id, 'docstatus')
 	if docstatus and docstatus != 0:
 		frappe.throw(
-			f'Expense {expense_id} has already been submitted and cannot be added to a new report.',
-			title='Expense Already Submitted'
+			_('Expense {0} has already been submitted and cannot be added to a new report.').format(expense_id),
+			title=_('Expense Already Submitted')
 		)
 
 	# Check if expense is already linked to an active (non-cancelled) report
@@ -256,8 +257,8 @@ def _check_expense_not_in_active_report(expense_id):
 
 	if existing:
 		frappe.throw(
-			f'Expense {expense_id} is already linked to Expense Report {existing[0].parent}.',
-			title='Expense Already in Report'
+			_('Expense {0} is already linked to Expense Report {1}.').format(expense_id, existing[0].parent),
+			title=_('Expense Already in Report')
 		)
 
 
@@ -280,19 +281,19 @@ def create_bulk_expense_report(selected):
 	"""Create an expense report from multiple selected expenses."""
 	# Input validation
 	if not selected or not isinstance(selected, str):
-		return {'response': 'Error', 'message': 'Invalid selection parameter'}
+		return {'response': 'Error', 'message': _('Invalid selection parameter')}
 
 	# Parse the JSON array into a Python list of dictionaries
 	try:
 		json_list = json.loads(selected)
 	except json.JSONDecodeError:
-		return {'response': 'Error', 'message': 'Invalid JSON format'}
+		return {'response': 'Error', 'message': _('Invalid JSON format')}
 
 	if not isinstance(json_list, list):
-		return {'response': 'Error', 'message': 'Selection must be a list'}
+		return {'response': 'Error', 'message': _('Selection must be a list')}
 
 	if not json_list:
-		return {'response': 'Error', 'message': 'No expenses selected'}
+		return {'response': 'Error', 'message': _('No expenses selected')}
 
 	details = []
 	last_expense = None
