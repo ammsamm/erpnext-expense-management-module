@@ -234,7 +234,7 @@ def create_expense_report(expense, details=None):
 			except Exception as cleanup_error:
 				frappe.log_error(f"Failed to cleanup expense report {report.name}: {str(cleanup_error)}")
 
-		return {'response': 'Error', 'message': str(e)}
+		return {'response': 'Error', 'message': _('An error occurred while creating the expense report')}
 
 
 def _check_expense_not_in_active_report(expense_id):

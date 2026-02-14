@@ -18,6 +18,8 @@ TRANSLATIONS = {
         "يجب تقديم المصروفات عبر تقرير المصروفات. "
         'استخدم زر "إنشاء تقرير" لتقديم هذا المصروف.',
     "Direct Submission Not Allowed": "التقديم المباشر غير مسموح",
+    "An error occurred while creating the expense report":
+        "حدث خطأ أثناء إنشاء تقرير المصروفات",
     "You can only create expenses for your own employee record.":
         "يمكنك فقط إنشاء مصروفات لسجل الموظف الخاص بك.",
     "Permission Denied": "تم رفض الإذن",
