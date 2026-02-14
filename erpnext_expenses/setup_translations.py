@@ -235,6 +235,23 @@ TRANSLATIONS = {
     "Expense Taxes": "ضرائب المصروفات",
     "Employee": "موظف",
     "Company": "شركة",
+
+    # ── DocType field labels ──
+    "Expense Description": "وصف المصروف",
+    "Expense Date": "تاريخ المصروف",
+    "Total": "الإجمالي",
+    "Employee Name": "اسم الموظف",
+    "Paid By": "مدفوع بواسطة",
+    "Paid by": "مدفوع بواسطة",
+    "Paying Account": "حساب الدفع",
+    "Amended From": "معدّل من",
+    "Invoice Attachments": "مرفقات الفاتورة",
+    "Expense Splitting": "تقسيم المصروف",
+    "Split Total": "إجمالي التقسيم",
+    "Expenses": "المصروفات",
+
+    # ── Select field options ──
+    "Employee (to reimburse)": "موظف (للتعويض)",
 }
 
 
