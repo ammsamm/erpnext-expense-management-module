@@ -238,3 +238,5 @@ fixtures = [
     "Workflow Action Master",
     "Workflow"
 ]
+
+after_migrate = ["erpnext_expenses.setup_translations.setup_translations"]
