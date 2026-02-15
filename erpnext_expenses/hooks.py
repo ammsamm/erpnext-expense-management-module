@@ -239,4 +239,6 @@ fixtures = [
     "Workflow"
 ]
 
-after_migrate = ["erpnext_expenses.setup_translations.setup_translations"]
+# Translations are now managed centrally by rustic_translator.
+# See rustic_translator/setup_translations.py
+# after_migrate = ["erpnext_expenses.setup_translations.setup_translations"]

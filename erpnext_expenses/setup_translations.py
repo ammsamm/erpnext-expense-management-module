@@ -1,16 +1,25 @@
 """
+DEPRECATED: Translations are now managed centrally by rustic_translator.
+See rustic_translator/rustic_translator/setup_translations.py and
+rustic_translator/rustic_translator/translations/ar.csv
+
+This file is kept as a reference. The after_migrate hook has been
+disabled in hooks.py. Do NOT re-enable it — doing so would create
+duplicate Translation DocType entries.
+
+--- Original description ---
 Centralized Arabic translations for the Expense Management system.
 
 Translations are inserted into the Translation DocType (Frappe's global translation system)
 so both erpnext_expenses and POSNext pick them up via get_all_translations("ar").
-
-Runs on every `bench migrate` via after_migrate hook.
 """
 
 import frappe
 
 
-# All Arabic translations for expense-related strings across both apps
+# All Arabic translations for expense-related strings across both apps.
+# Includes common terms to ensure they survive Frappe/ERPNext updates
+# (rustic_translator edits core CSVs which get overwritten on update).
 TRANSLATIONS = {
     # ── erpnext_expenses: Python (expense.py) ──
     "Expenses must be submitted via an Expense Report. "
@@ -215,9 +224,8 @@ TRANSLATIONS = {
     # ── POSNext: Vue (ExpenseCard.vue) ──
     "Edit": "تعديل",
     "Delete": "حذف",
-    "Pending Sync": "في انتظار المزامنة",
     "Draft": "مسودة",
-    "Submitted": "مُقدَّم",
+    "Submitted": "مُعتمد",
     "Cancelled": "ملغي",
 
     # ── POSNext: Vue (ExpenseReportCard.vue) ──
@@ -243,7 +251,6 @@ TRANSLATIONS = {
     "Expense Date": "تاريخ المصروف",
     "Total": "الإجمالي",
     "Employee Name": "اسم الموظف",
-    "Paid By": "مدفوع بواسطة",
     "Paid by": "مدفوع بواسطة",
     "Paying Account": "حساب الدفع",
     "Amended From": "معدّل من",
@@ -262,22 +269,36 @@ def setup_translations():
 
     Called via after_migrate hook. Both erpnext_expenses and POSNext
     read from the same Translation table via get_all_translations("ar").
+
+    Handles duplicate cleanup: rustic_translator imports from CSV can create
+    duplicate Translation entries for the same source_text. This function
+    deletes all duplicates and ensures exactly one entry per source_text.
     """
     count_new = 0
     count_updated = 0
+    count_deduped = 0
 
     for source_text, translated_text in TRANSLATIONS.items():
-        existing = frappe.db.get_value(
+        # Find ALL matching entries (not just one) to handle duplicates
+        all_entries = frappe.get_all(
             "Translation",
-            {"language": "ar", "source_text": source_text},
-            ["name", "translated_text"],
-            as_dict=True,
+            filters={"language": "ar", "source_text": source_text},
+            fields=["name", "translated_text"],
+            order_by="modified desc",
         )
 
-        if existing:
-            if existing.translated_text != translated_text:
+        if len(all_entries) > 1:
+            # Delete all duplicates, keep none (we'll update or re-insert below)
+            for entry in all_entries[1:]:
+                frappe.delete_doc("Translation", entry.name, force=True)
+                count_deduped += 1
+
+        if all_entries:
+            # Update the remaining entry if translation differs
+            keeper = all_entries[0]
+            if keeper.translated_text != translated_text:
                 frappe.db.set_value(
-                    "Translation", existing.name, "translated_text", translated_text
+                    "Translation", keeper.name, "translated_text", translated_text
                 )
                 count_updated += 1
         else:
@@ -290,14 +311,13 @@ def setup_translations():
             doc.insert(ignore_permissions=True)
             count_new += 1
 
-    if count_new or count_updated:
+    if count_new or count_updated or count_deduped:
         frappe.db.commit()
         # Clear translation cache so changes take effect immediately
         frappe.cache.delete_key("translations")
         frappe.cache.delete_key("lang_user_translations")
-
-    if count_new or count_updated:
         print(
-            f"Expense translations: {count_new} new, {count_updated} updated "
+            f"Expense translations: {count_new} new, {count_updated} updated, "
+            f"{count_deduped} duplicates removed "
             f"(total {len(TRANSLATIONS)} entries)"
         )
